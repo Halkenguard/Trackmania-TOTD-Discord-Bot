@@ -4,7 +4,6 @@ import os
 import json
 
 from dotenv import load_dotenv
-
 load_dotenv()
 
 
@@ -35,7 +34,8 @@ level_zero = requests.post(
     headers=level_zero_params
 ).json()
 
-ticket = level_zero["ticket"]
+        level_zero = requests.post("https://public-ubiservices.ubi.com/v3/profiles/sessions",
+                                    headers=level_zero_params).json()
 
 level_one_params = {
     **default_headers,
