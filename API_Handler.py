@@ -6,7 +6,7 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 
-#JPrint is only here for logging and debugging, can be removed later.
+# JPrint is only here for logging and debugging, can be removed later.
 def jprint(obj):
     # create a formatted string of the Python JSON object
     text = json.dumps(obj, sort_keys=True, indent=4)
@@ -70,7 +70,6 @@ class TMConnector:
         self.refresh_token_nadeo = level_two["refreshToken"]
 
 
-
     def totd(self):
         # get all TOTDs
         return requests.get(
@@ -79,27 +78,28 @@ class TMConnector:
         ).json()
 
 
-    def totd_info(self, map_uid):
-        # get specific TOTD map data
+    def map_info(self, map_uid):
+        # get specific map data
         return requests.get(
             "https://prod.trackmania.core.nadeo.online/maps/?mapUidList=" +
             map_uid,
             headers={"Authorization": "nadeo_v1 t=" + self.access_token_ubi}
         ).json()
 
-#The code below should be moved to the bot once it's ready to start sending API requests
+# the code below should be moved to the bot once it's ready to start sending API requests
 
 nadeo = TMConnector(os.getenv('USER_LOGIN'))
 
 totd_list = nadeo.totd()
 
-#get the current TOTD from the list
+# get the current TOTD from the list
 current_track_meta = {}
 for track in totd_list["monthList"][0]["days"]:
+    # if start's in the past and end's in the future, we got the current one
     if track["relativeStart"] < 0 and track["relativeEnd"] > 0:
         current_track_meta = track
         break
 
-current_track = nadeo.totd_info(current_track_meta["mapUid"])
+current_track = nadeo.map_info(current_track_meta["mapUid"])
 
 jprint(current_track)
