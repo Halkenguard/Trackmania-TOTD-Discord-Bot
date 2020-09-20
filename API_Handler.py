@@ -70,7 +70,7 @@ class TMConnector:
         self.refresh_token_nadeo = level_two["refreshToken"]
 
 
-    def totd(self):
+    def get_totds(self):
         # get all TOTDs
         return requests.get(
             "https://live-services.trackmania.nadeo.live/api/token/campaign/month",
@@ -78,28 +78,54 @@ class TMConnector:
         ).json()
 
 
-    def map_info(self, map_uid):
-        # get specific map data
+    def get_map_info(self, map_uid):
+        # get in-game map data
         return requests.get(
             "https://prod.trackmania.core.nadeo.online/maps/?mapUidList=" +
             map_uid,
             headers={"Authorization": "nadeo_v1 t=" + self.access_token_ubi}
+        ).json()[0]
+
+class TMXConnector:
+    def get_map_info(self, map_uid):
+        # try to find the map on TMX using its Uid
+        tmx_info = requests.get(
+            "https://trackmania.exchange/api/tracks/get_track_info/multi/" + map_uid
         ).json()
+
+        if len(tmx_info) == 1:
+            return tmx_info[0]
+        else:
+            # map can't be found on TMX
+            return None
 
 # the code below should be moved to the bot once it's ready to start sending API requests
 
-nadeo = TMConnector(os.getenv('USER_LOGIN'))
+def enrich_map_with_tmx(map):
+    enriched_map = map
+    tmx_info = tmx.get_map_info(map["mapUid"])
+    if tmx_info:
+        enriched_map["tmxName"] = tmx_info["Name"]
+        enriched_map["tmxStyle"] = tmx_info["StyleName"]
+        enriched_map["tmxAuthor"] = tmx_info["Username"]
+        enriched_map["tmxTrackId"] = tmx_info["TrackID"]
+    return enriched_map
 
-totd_list = nadeo.totd()
+nadeo = TMConnector(os.getenv('USER_LOGIN'))
+tmx = TMXConnector()
+
+totd_list = nadeo.get_totds()
 
 # get the current TOTD from the list
-current_track_meta = {}
+current_totd_meta = {}
 for track in totd_list["monthList"][0]["days"]:
-    # if start's in the past and end's in the future, we got the current one
+    # if start is in the past and end is in the future, it's the current one
     if track["relativeStart"] < 0 and track["relativeEnd"] > 0:
-        current_track_meta = track
+        current_totd_meta = track
         break
 
-current_track = nadeo.map_info(current_track_meta["mapUid"])
+current_totd = enrich_map_with_tmx(
+    nadeo.get_map_info(current_totd_meta["mapUid"])
+)
 
-jprint(current_track)
+jprint(current_totd)
