@@ -70,6 +70,9 @@ def format_message(totd_data):
     track = "Today's track is **" + track_name + "** by **" + track_author + "**.\n"
 
     # assemble medal info
+    # TODO: format the time strings
+    # TODO: look into using the medal emojis
+    # TODO: clean this up
     medals = "Medal times:\nBronze: " + str(totd_data["bronzeScore"]) + "\nSilver: " + str(totd_data["silverScore"]) + "\nGold: " + str(totd_data["goldScore"]) + "\nAuthor: " + str(totd_data["authorScore"]) + "\n\n"
     scoreNote = "React to this message below to rate the TOTD!"
     
@@ -81,12 +84,16 @@ async def on_ready():
     print(client.guilds[1].channels[2].name)
     try:
         totd_data = get_totd_data()
+        # TODO: figure out how this should determine in which guilds/channels it should post
         await client.guilds[1].channels[2].send(format_message(totd_data))
+        # TODO: add reactions (maybe send() returns a messageId?)
+        # TODO: gracefully close the process when it's done
     except Exception as e:
         print(e)
-    
 
 client.run(TOKEN)
+
+# test track data
 test = {
     'author': '0f400a09-023c-4787-87ed-72261460f337',
     'authorScore': 43061,
@@ -109,5 +116,3 @@ test = {
     'tmxAuthor': 'Paulmar35',
     'tmxTrackId': 17755
 }
-
-#format_message(test)
