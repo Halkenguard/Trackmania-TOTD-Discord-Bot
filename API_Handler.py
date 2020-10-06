@@ -21,6 +21,10 @@ class TMConnector:
     access_token_nadeo = ""
     refresh_token_nadeo = ""
 
+    level_zero_params = {}
+    level_one_params = {}
+    level_two_params = {}
+
     def nadeo_connect(self, login):
         default_headers = {
             "Content-Type": 'application/json',
@@ -32,38 +36,38 @@ class TMConnector:
         base64_bytes = base64.b64encode(login_bytes)
         base64_login = base64_bytes.decode('ascii')
 
-        level_zero_params = {
+        self.level_zero_params = {
             **default_headers,
             "Authorization": 'Basic ' + base64_login
         }
 
         level_zero = requests.post(
             "https://public-ubiservices.ubi.com/v3/profiles/sessions",
-            headers=level_zero_params
+            headers=self.level_zero_params
         ).json()
 
-        level_one_params = {
+        self.level_one_params = {
             **default_headers,
             "Authorization": "ubi_v1 t=" + level_zero["ticket"]
         }
 
         level_one = requests.post(
             "https://prod.trackmania.core.nadeo.online/v2/authentication/token/ubiservices",
-            headers=level_one_params
+            headers=self.level_one_params
         ).json()
 
         self.access_token_ubi = level_one["accessToken"]
         self.refresh_token_ubi = level_one["refreshToken"]
 
         # using the default headers here seems to result in a malformed JSON in the API response?
-        level_two_params = {
+        self.level_two_params = {
             "Authorization": "nadeo_v1 t=" + self.access_token_ubi
         }
 
         level_two = requests.post(
             "https://prod.trackmania.core.nadeo.online/v2/authentication/token/nadeoservices",
             data={'audience': 'NadeoLiveServices'},
-            headers=level_two_params
+            headers=self.level_two_params
         ).json()
 
         self.access_token_nadeo = level_two["accessToken"]
@@ -86,6 +90,15 @@ class TMConnector:
             headers={"Authorization": "nadeo_v1 t=" + self.access_token_ubi}
         ).json()[0]
 
+    def get_user_info(self, profile_id):
+        # get in-game user information (primarily the name)
+        # TODO: figure out why some profileIds seem to only return empty arrays (permission problem cause my own id works?)
+        return requests.get(
+            "https://public-ubiservices.ubi.com/v3/profiles?profileId=" +
+            profile_id,
+            headers=self.level_one_params
+        ).json()
+
 class TMXConnector:
     def get_map_info(self, map_uid):
         # try to find the map on TMX using its Uid
@@ -99,33 +112,3 @@ class TMXConnector:
             # map can't be found on TMX
             return None
 
-# the code below should be moved to the bot once it's ready to start sending API requests
-
-def enrich_map_with_tmx(map):
-    enriched_map = map
-    tmx_info = tmx.get_map_info(map["mapUid"])
-    if tmx_info:
-        enriched_map["tmxName"] = tmx_info["Name"]
-        enriched_map["tmxStyle"] = tmx_info["StyleName"]
-        enriched_map["tmxAuthor"] = tmx_info["Username"]
-        enriched_map["tmxTrackId"] = tmx_info["TrackID"]
-    return enriched_map
-
-nadeo = TMConnector(os.getenv('USER_LOGIN'))
-tmx = TMXConnector()
-
-totd_list = nadeo.get_totds()
-
-# get the current TOTD from the list
-current_totd_meta = {}
-for track in totd_list["monthList"][0]["days"]:
-    # if start is in the past and end is in the future, it's the current one
-    if track["relativeStart"] < 0 and track["relativeEnd"] > 0:
-        current_totd_meta = track
-        break
-
-current_totd = enrich_map_with_tmx(
-    nadeo.get_map_info(current_totd_meta["mapUid"])
-)
-
-jprint(current_totd)
