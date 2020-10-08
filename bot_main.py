@@ -23,7 +23,7 @@ def get_totd_data():
     def enrich_map_with_tmx(map):
         enriched_map = map
         tmx_info = tmx.get_map_info(map["mapUid"])
-        if tmx_info:
+        if tmx_info != None:
             enriched_map["tmxName"] = tmx_info["Name"]
             enriched_map["tmxStyle"] = tmx_info["StyleName"]
             enriched_map["tmxAuthor"] = tmx_info["Username"]
@@ -63,17 +63,31 @@ def format_message(totd_data):
 
     # assemble track info
     track_name = totd_data["name"]
-    if totd_data["tmxName"]:
+    if hasattr(totd_data, 'tmxName'):
         track_name = totd_data["tmxName"]
+    # TODO: if there's no tmxName, we need to parse out the formatting codes (colors etc.)
     # TODO: resolve the author's name
     track_author = totd_data["author"]
     track = "Today's track is **" + track_name + "** by **" + track_author + "**.\n"
 
+    def format_time(raw_time):
+        millisecs = raw_time[-3:]
+        secs = raw_time[-5:-3]
+        mins = "0"
+        if len(raw_time) == 6:
+            mins = raw_time[0]
+        return mins + ":" + secs + "." + millisecs
+
     # assemble medal info
-    # TODO: format the time strings
-    # TODO: look into using the medal emojis
-    # TODO: clean this up
-    medals = "Medal times:\nBronze: " + str(totd_data["bronzeScore"]) + "\nSilver: " + str(totd_data["silverScore"]) + "\nGold: " + str(totd_data["goldScore"]) + "\nAuthor: " + str(totd_data["authorScore"]) + "\n\n"
+    bronze = "<:MedalBronze:763718615764566016> Bronze: ||" + \
+        format_time(str(totd_data["bronzeScore"])) + "||\n"
+    silver = "<:MedalSilver:763718615689330699> Silver: ||" + \
+        format_time(str(totd_data["silverScore"])) + "||\n"
+    gold = "<:MedalGold:763718328685559811> Gold: ||" + \
+        format_time(str(totd_data["goldScore"])) + "||\n"
+    author = "<:MedalAuthor:763718159714222100> Author: ||" + \
+        format_time(str(totd_data["authorScore"])) + "||\n"
+    medals = "Medal times:\n" + bronze + silver + gold + author + "\n"
     scoreNote = "React to this message below to rate the TOTD!"
     
     return title + track + medals + scoreNote
@@ -84,12 +98,18 @@ async def on_ready():
     print(client.guilds[1].channels[2].name)
     try:
         totd_data = get_totd_data()
-        # TODO: figure out how this should determine in which guilds/channels it should post
-        await client.guilds[1].channels[2].send(format_message(totd_data))
-        # TODO: add reactions (maybe send() returns a messageId?)
-        # TODO: gracefully close the process when it's done
+        # TODO: figure out how this should determine in which guilds/channels it should post (maybe the first channel in every server with 'totd' in their name)
+        message = await client.guilds[1].channels[2].send(format_message(totd_data))
+        
+        emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+        for emoji in emojis:
+            await message.add_reaction(emoji)
     except Exception as e:
         print(e)
+    
+    # TODO: gracefully close the process when it's done
+    # for some reason, this causes an "Event loop is closed" exception though
+    #await client.close()
 
 client.run(TOKEN)
 
@@ -97,7 +117,7 @@ client.run(TOKEN)
 test = {
     'author': '0f400a09-023c-4787-87ed-72261460f337',
     'authorScore': 43061,
-    'bronzeScore': 65000,
+    'bronzeScore': 105000,
     'collectionName': 'Stadium',
     'environment': 'Stadium',
     'filename': 'Avalanche!.Map.Gbx',
