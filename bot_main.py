@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 
 import discord
@@ -17,7 +18,10 @@ def get_totd_data():
 
     def enrich_map_with_username(map):
         enriched_map = map
-        enriched_map["authorName"] = nadeo.get_user_info(map["author"])
+        resolved_name = nadeo.get_user_name(map["author"])
+        if resolved_name != map["author"]:
+            # only set authorName if it's not the same value as the accountId (so it'll try to use the TMX name instead)
+            enriched_map["authorName"] = resolved_name
         return enriched_map
 
     def enrich_map_with_tmx(map):
@@ -43,12 +47,34 @@ def get_totd_data():
     # get initial map
     current_totd = nadeo.get_map_info(current_totd_meta["mapUid"])
     # add author's username
-    #current_totd = enrich_map_with_username(current_totd)
+    current_totd = enrich_map_with_username(current_totd)
     # add TMX info
     current_totd = enrich_map_with_tmx(current_totd)
     return current_totd
 
 def format_message(totd_data):
+    def format_time(raw_time):
+        millisecs = raw_time[-3:]
+        secs = raw_time[-5:-3]
+        mins = "0"
+        if len(raw_time) == 6:
+            mins = raw_time[0]
+        return mins + ":" + secs + "." + millisecs
+    
+    def remove_name_formatting(text):
+        # this should take care of all the possible options, see https://doc.maniaplanet.com/client/text-formatting for reference
+        text = text.replace("$w", "")
+        text = text.replace("$n", "")
+        text = text.replace("$o", "")
+        text = text.replace("$i", "")
+        text = text.replace("$t", "")
+        text = text.replace("$s", "")
+        text = text.replace("$g", "")
+        text = text.replace("$z", "")
+        text = text.replace("$$", "$")
+        text = re.sub(r"\$[0-9a-fA-F]{3}", "", text)
+        return text
+
     # assemble title
     today = datetime.now().strftime("%B %d")
     if today[len(today) - 1] == "1":
@@ -61,22 +87,23 @@ def format_message(totd_data):
         today += "th"
     title = "**The " + today + " Track of the Day is now live!**\n"
 
-    # assemble track info
+    # get track name
     track_name = totd_data["name"]
-    if hasattr(totd_data, 'tmxName'):
+    if 'tmxName' in totd_data:
         track_name = totd_data["tmxName"]
-    # TODO: if there's no tmxName, we need to parse out the formatting codes (colors etc.)
-    # TODO: resolve the author's name
-    track_author = totd_data["author"]
-    track = "Today's track is **" + track_name + "** by **" + track_author + "**.\n"
+    else:
+        track_name = remove_name_formatting(totd_data["name"])
 
-    def format_time(raw_time):
-        millisecs = raw_time[-3:]
-        secs = raw_time[-5:-3]
-        mins = "0"
-        if len(raw_time) == 6:
-            mins = raw_time[0]
-        return mins + ":" + secs + "." + millisecs
+    track_name = remove_name_formatting(totd_data["name"])
+
+    # get track author
+    track_author = totd_data["author"]
+    if 'authorName' in totd_data:
+        track_author = totd_data["authorName"]
+    elif 'tmxAuthor' in totd_data:
+        track_author = totd_data["tmxAuthor"]
+
+    track = "Today's track is **" + track_name + "** by **" + track_author + "**.\n"
 
     # assemble medal info
     bronze = "<:MedalBronze:763718615764566016> Bronze: ||" + \
@@ -112,27 +139,3 @@ async def on_ready():
     #await client.close()
 
 client.run(TOKEN)
-
-# test track data
-test = {
-    'author': '0f400a09-023c-4787-87ed-72261460f337',
-    'authorScore': 43061,
-    'bronzeScore': 105000,
-    'collectionName': 'Stadium',
-    'environment': 'Stadium',
-    'filename': 'Avalanche!.Map.Gbx',
-    'goldScore': 46000,
-    'isPlayable': True,
-    'mapId': '356edc8c-0999-4789-adb6-d3bdf938bac0',
-    'mapUid': 'ecpfGu8TywF7HDyaMXHT5ApXv8g',
-    'name': 'Avalanche!',
-    'silverScore': 52000,
-    'submitter': '0f400a09-023c-4787-87ed-72261460f337',
-    'timestamp': '2020-09-29T21:24:42+00:00',
-    'fileUrl': 'https://prod.trackmania.core.nadeo.online/storageObjects/89671a11-cdbd-4be3-b890-dedef09a9bfc',
-    'thumbnailUrl': 'https://prod.trackmania.core.nadeo.online/storageObjects/3c19e9dc-1726-4176-beb2-4cf22e2cbaee.jpg',
-    'tmxName': 'Avalanche!',
-    'tmxStyle': 'Competitive',
-    'tmxAuthor': 'Paulmar35',
-    'tmxTrackId': 17755
-}

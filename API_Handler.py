@@ -90,14 +90,29 @@ class TMConnector:
             headers={"Authorization": "nadeo_v1 t=" + self.access_token_ubi}
         ).json()[0]
 
-    def get_user_info(self, profile_id):
-        # get in-game user information (primarily the name)
-        # TODO: figure out why some profileIds seem to only return empty arrays (permission problem cause my own id works?)
-        return requests.get(
-            "https://public-ubiservices.ubi.com/v3/profiles?profileId=" +
-            profile_id,
-            headers=self.level_one_params
+    def get_user_name(self, account_id):
+        # get the TM account first
+        accounts = requests.get(
+            "https://prod.trackmania.core.nadeo.online/webidentities/?accountIdList=" + account_id,
+            headers=self.level_two_params
         ).json()
+
+        if len(accounts) == 0:
+            print("Error: account not found, using the accountId")
+            return account_id
+        else:
+            # get the Ubi profile for the in-game name
+            profiles = requests.get(
+                "https://public-ubiservices.ubi.com/v3/profiles?profileId=" +
+                accounts[0]["uid"],
+                headers=self.level_one_params
+            ).json()["profiles"]
+            
+            if len(profiles) == 0:
+                print("Error: profile not found, using the accountId")
+                return account_id
+            else:
+                return profiles[0]["nameOnPlatform"]
 
 class TMXConnector:
     def get_map_info(self, map_uid):
