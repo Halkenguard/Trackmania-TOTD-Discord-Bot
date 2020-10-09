@@ -125,12 +125,23 @@ async def on_ready():
     print(client.guilds[1].channels[2].name)
     try:
         totd_data = get_totd_data()
-        # TODO: figure out how this should determine in which guilds/channels it should post (maybe the first channel in every server with 'totd' in their name)
-        message = await client.guilds[1].channels[2].send(format_message(totd_data))
+
+        channels_to_post = []
+        for guild in client.guilds:
+            for channel in guild.channels:
+                # find the first text channel containing the word "totd"
+                if isinstance(channel, discord.TextChannel) and "totd" in channel.name:
+                    channels_to_post.append(channel)
+                    print("Posting in channel \"" + channel.name + "\" on server \"" + guild.name + "\"")
+
+                    message = await channel.send(format_message(totd_data))
+
+                    emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣',
+                            '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+                    for emoji in emojis:
+                        await message.add_reaction(emoji)
+                    break
         
-        emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
-        for emoji in emojis:
-            await message.add_reaction(emoji)
     except Exception as e:
         print(e)
     
