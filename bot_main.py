@@ -63,16 +63,17 @@ def format_message(totd_data):
     
     def remove_name_formatting(text):
         # this should take care of all the possible options, see https://doc.maniaplanet.com/client/text-formatting for reference
+        text = re.sub(r"\$[0-9a-fA-F]{3}", "", text)
         text = text.replace("$w", "")
         text = text.replace("$n", "")
         text = text.replace("$o", "")
+        text = text.replace("$b", "")
         text = text.replace("$i", "")
         text = text.replace("$t", "")
         text = text.replace("$s", "")
         text = text.replace("$g", "")
         text = text.replace("$z", "")
         text = text.replace("$$", "$")
-        text = re.sub(r"\$[0-9a-fA-F]{3}", "", text)
         return text
 
     # assemble title
