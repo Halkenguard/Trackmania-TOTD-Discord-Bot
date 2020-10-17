@@ -23,6 +23,7 @@ To add new dependencies, simply run `pipenv install [dependency]`. Add a `--dev`
   - Get the TMX thumbnail. Typically, maps on TMX have a stylized thumbnail that's better than the in-game one.
   - Get the map's assigned difficulty. Looks like that's an empty string in the TMX API although it's definitely being used on TMX itself.
   - Get the map's assigned tags. Also seems to be an empty string. There is a `StyleName` property that seems to contain the first tag.
+  - Use an embed instead of a standard message (see https://discord.com/developers/docs/resources/channel#embed-object).
 - Bot functionality:
   - Make the bot listen to a command for adding/removing channels to the post list (needs to be persisted).
   - Cache the current TOTD (or its message) so we only need to make the request once.
